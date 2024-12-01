@@ -1,24 +1,24 @@
-version: '3'
+version: "3"
 services:
+  # MySQL
   mysql:
+    platform: linux/x86_64
     image: mysql:8.0
+    container_name: mysql
     environment:
       MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: sample_db
+      MYSQL_USER: dockerize_mysql
+      MYSQL_PASSWORD: 0111mvtT
     ports:
-      - '3306:3306'
-    command: --default-authentication-plugin=mysql_native_password
+      - "13306:3306"
+    command: --default-authentication-plugin=caching_sha2_password
     volumes:
-      - mysql-data:/var/lib/mysql
-
-  mongodb:
-    image: mongo:4.0.28
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: password
-    ports:
-      - 27017:27017
-    volumes:
-      - mongodb-data:/data/db
+      - ./.docker/mysql/data:/var/lib/mysql
+      - ./.docker/mysql/conf.d:/etc/mysql/mysql.conf.d/
+    restart: always
+    networks:
+      - backend
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -31,35 +31,143 @@ services:
       PMA_ARBITRARY: 1
     restart: always
     ports:
-      - 8081:80
+      - 8082:80
+    networks:
+      - backend
 
-  redis:
-    image: redis:6.2-alpine
-    restart: always
+  mongodb:
+    image: mongo:latest
+    container_name: mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: auth
     ports:
-      - 6379
-    command: redis-server --loglevel warning
+      - 27017:27017
     volumes:
-      - ~/.docker/redis:/data
-    # networks:
-    #   - common
+      - ./.docker/mongodb-data:/data/db
+    networks:
+      - backend
 
-  postgres:
-    image: postgres:14.6-alpine
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo_express
+    restart: unless-stopped
     ports:
-      - 5432:5432
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: true
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH_USERNAME: dockerize_mongo
+      ME_CONFIG_BASICAUTH_PASSWORD: 0111mvtT
+      ME_CONFIG_MONGODB_PORT: 27017
+    depends_on:
+      - mongodb
+    networks:
+      - backend
+
+  # Redis Service
+  redis:
+    image: redis:latest
+    container_name: redis
     restart: always
     environment:
-      - POSTGRES_DATABASE=databaseName
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
+      ALLOW_EMPTY_PASSWORD: yes
+      REDIS_DISABLE_COMMANDS: FLUSHDB,FLUSHALL
+    ports:
+      - "6379:6379"
     volumes:
-      - ~/.docker/db:/var/lib/postgresql/data
-    # networks:
-    #   - common
+      - ./.docker/redis/data:/data
+    networks:
+      - backend
+
+  # Redis UI
+  redis-ui:
+    image: erikdubbelboer/phpredisadmin
+    restart: always
+    container_name: redis_ui
+    environment:
+      ADMIN_USER: admin
+      ADMIN_PASS: password
+      REDIS_1_HOST: redis
+      REDIS_1_PORT: 6379
+    ports:
+      - "8083:81"
+    links:
+      - redis
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: sample_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./.docker/db:/var/lib/postgresql@16/data
+    networks:
+      - backend
+
+  phppgadmin:
+    restart: always
+    image: dockage/phppgadmin:latest
+    ports:
+    - "80:80"
+    - "443:443"
+    environment:
+    - PHP_PG_ADMIN_SERVER_DESC=PostgreSQL
+    - PHP_PG_ADMIN_SERVER_HOST=
+    - PHP_PG_ADMIN_SERVER_PORT=5432
+    - PHP_PG_ADMIN_SERVER_SSL_MODE=allow
+    - PHP_PG_ADMIN_SERVER_DEFAULT_DB=template1
+    - PHP_PG_ADMIN_SERVER_PG_DUMP_PATH=/usr/bin/pg_dump
+    - PHP_PG_ADMIN_SERVER_PG_DUMPALL_PATH=/usr/bin/pg_dumpall
+
+    - PHP_PG_ADMIN_DEFAULT_LANG=auto
+    - PHP_PG_ADMIN_AUTO_COMPLETE=default on
+    - PHP_PG_ADMIN_EXTRA_LOGIN_SECURITY=false
+    - PHP_PG_ADMIN_OWNED_ONLY=false
+    - PHP_PG_ADMIN_SHOW_COMMENTS=true
+    - PHP_PG_ADMIN_SHOW_ADVANCED=false
+    - PHP_PG_ADMIN_SHOW_SYSTEM=false
+    - PHP_PG_ADMIN_MIN_PASSWORD_LENGTH=1
+    - PHP_PG_ADMIN_LEFT_WIDTH=200
+    - PHP_PG_ADMIN_THEME=default
+    - PHP_PG_ADMIN_SHOW_OIDS=false
+    - PHP_PG_ADMIN_MAX_ROWS=30
+    - PHP_PG_ADMIN_MAX_CHARS=50
+    - PHP_PG_ADMIN_USE_XHTML_STRICT=false
+    - PHP_PG_ADMIN_HELP_BASE=http://www.postgresql.org/docs/%s/interactive/
+    - PHP_PG_ADMIN_AJAX_REFRESH=3
+    networks:
+        - backend
+
+  minio:
+    image: docker.io/bitnami/minio:latest
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./.docker/minio_data:/data
+    restart: always
+    networks:
+      - backend
 
 volumes:
-  mysql-data:
-  mongodb-data:
-  # common: 
-  #   driver: bridge
+  minio_data:
+
+networks:
+  backend:
+    driver: bridge
