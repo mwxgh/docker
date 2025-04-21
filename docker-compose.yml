@@ -56,7 +56,7 @@ services:
     container_name: mongo_express
     restart: unless-stopped
     ports:
-      - 8081:8081
+      - 8084:8081
     environment:
       ME_CONFIG_MONGODB_ENABLE_ADMIN: true
       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
@@ -91,12 +91,12 @@ services:
     restart: always
     container_name: redis_ui
     environment:
-      ADMIN_USER: admin
-      ADMIN_PASS: password
+      ADMIN_USER: dockerize_redis
+      ADMIN_PASS: 0111mvtT
       REDIS_1_HOST: redis
       REDIS_1_PORT: 6379
     ports:
-      - "8082:81"
+      - "8083:80"
     links:
       - redis
     networks:
@@ -110,8 +110,8 @@ services:
       - 5432:5432
     environment:
       POSTGRES_DB: sample_db
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: dockerize_postgres
+      POSTGRES_PASSWORD: 0111mvtT
     volumes:
       - ./.docker/db:/var/lib/postgresql@16/data
     networks:
@@ -121,7 +121,7 @@ services:
     restart: always
     image: dockage/phppgadmin:latest
     ports:
-      - "80:80"
+      - "8085:80"
       - "443:443"
     environment:
       - PHP_PG_ADMIN_SERVER_DESC=PostgreSQL
@@ -148,6 +148,8 @@ services:
       - PHP_PG_ADMIN_USE_XHTML_STRICT=false
       - PHP_PG_ADMIN_HELP_BASE=http://www.postgresql.org/docs/%s/interactive/
       - PHP_PG_ADMIN_AJAX_REFRESH=3
+    depends_on:
+      - postgres
     networks:
       - backend
 
@@ -165,7 +167,7 @@ services:
     restart: always
     networks:
       - backend
-  
+
   kafka:
     image: bitnami/kafka:3.4
     hostname: dockerize_kafka
