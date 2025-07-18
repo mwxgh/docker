@@ -47,44 +47,32 @@ services:
       POSTGRES_USER: dockerize_postgres
       POSTGRES_PASSWORD: 0111mvtT
     volumes:
-      - ./.docker/db:/var/lib/postgresql@16/data
+      - ./.docker/postgres:/var/lib/postgresql@16/data
     networks:
       - backend
 
   # Phppgadmin
   phppgadmin:
     restart: always
+    container_name: pga
     image: dockage/phppgadmin:latest
     ports:
       - "8082:80"
-      - "443:443"
     environment:
-      - PHP_PG_ADMIN_SERVER_DESC=PostgreSQL
-      - PHP_PG_ADMIN_SERVER_HOST=postgres
-      - PHP_PG_ADMIN_SERVER_PORT=5432
-      - PHP_PG_ADMIN_SERVER_SSL_MODE=allow
-      - PHP_PG_ADMIN_SERVER_DEFAULT_DB=template1
-      - PHP_PG_ADMIN_SERVER_PG_DUMP_PATH=/usr/bin/pg_dump
-      - PHP_PG_ADMIN_SERVER_PG_DUMPALL_PATH=/usr/bin/pg_dumpall
+      PHP_PG_ADMIN_SERVER_DESC: PostgreSQL
+      PHP_PG_ADMIN_SERVER_HOST: postgres
+      PHP_PG_ADMIN_SERVER_PORT: 5432
+      PHP_PG_ADMIN_SERVER_SSL_MODE: allow
+      PHP_PG_ADMIN_SERVER_DEFAULT_DB: sample_db
+      PHP_PG_ADMIN_SERVER_PG_DUMP_PATH: /usr/bin/pg_dump
+      PHP_PG_ADMIN_SERVER_PG_DUMPALL_PATH: /usr/bin/pg_dumpall
 
-      - PHP_PG_ADMIN_DEFAULT_LANG=auto
-      - PHP_PG_ADMIN_AUTO_COMPLETE=default on
-      - PHP_PG_ADMIN_EXTRA_LOGIN_SECURITY=false
-      - PHP_PG_ADMIN_OWNED_ONLY=false
-      - PHP_PG_ADMIN_SHOW_COMMENTS=true
-      - PHP_PG_ADMIN_SHOW_ADVANCED=false
-      - PHP_PG_ADMIN_SHOW_SYSTEM=false
-      - PHP_PG_ADMIN_MIN_PASSWORD_LENGTH=1
-      - PHP_PG_ADMIN_LEFT_WIDTH=200
-      - PHP_PG_ADMIN_THEME=default
-      - PHP_PG_ADMIN_SHOW_OIDS=false
-      - PHP_PG_ADMIN_MAX_ROWS=30
-      - PHP_PG_ADMIN_MAX_CHARS=50
-      - PHP_PG_ADMIN_USE_XHTML_STRICT=false
-      - PHP_PG_ADMIN_HELP_BASE=http://www.postgresql.org/docs/%s/interactive/
-      - PHP_PG_ADMIN_AJAX_REFRESH=3
+      PHP_PG_ADMIN_DEFAULT_LANG: en
+      PHP_PG_ADMIN_EXTRA_LOGIN_SECURITY: false
     depends_on:
       - postgres
+    volumes:
+      - ./.docker/pga:/var/lib/pgadmin
     networks:
       - backend
 
@@ -132,7 +120,7 @@ services:
     ports:
       - 27017:27017
     volumes:
-      - ./.docker/mongodb-data:/data/db
+      - ./.docker/mongodb:/data/db
     networks:
       - backend
 
@@ -165,7 +153,7 @@ services:
       - "9092:9092"
       - "9094:9094"
     volumes:
-      - "./volumes/kafka:/bitnami/kafka/config"
+      - "./.docker/kafka:/bitnami/kafka/config"
     environment:
       - KAFKA_ENABLE_KRAFT=yes
       # - KAFKA_KRAFT_CLUSTER_ID=M8mh0vTW2f7uOo4YI38u3TRB7Kd2q1UU
@@ -210,10 +198,11 @@ services:
       MINIO_ROOT_PASSWORD: 0111mvtT
       MINIO_DEFAULT_BUCKETS: bucket
     ports:
-      - "9002:9000"
+      - "9000:9000"
       - "9001:9001"
     volumes:
-      - ./.docker/minio_data:/data
+      - ./.docker/minio:/data
+    command: server --console-address ":9001" /data
     restart: always
     networks:
       - backend
